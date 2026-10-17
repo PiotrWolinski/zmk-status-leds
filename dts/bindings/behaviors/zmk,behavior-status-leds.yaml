@@ -1,0 +1,13 @@
+description: ZMK Status LEDs behavior
+
+compatible: "zmk,behavior-status-leds"
+
+include: zero_param.yaml
+
+properties:
+  indicate-battery:
+    type: boolean
+    description: Trigger the battery level display when pressed
+  indicate-bt:
+    type: boolean
+    description: Trigger the Bluetooth connection status display when pressed

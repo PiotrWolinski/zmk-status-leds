@@ -1,0 +1,17 @@
+description: Configuration node for ZMK Status LEDs physical mapping
+
+compatible: "zmk,status-leds"
+
+properties:
+  led-strip:
+    type: phandle
+    required: false
+    description: Reference to the physical LED strip device (e.g., &led_strip)
+  battery-leds:
+    type: array
+    required: true
+    description: Array of physical LED indices used to display battery thresholds
+  bt-leds:
+    type: array
+    required: true
+    description: Array of physical LED indices corresponding to Bluetooth profile slots

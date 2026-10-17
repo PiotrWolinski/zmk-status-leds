@@ -1,0 +1,15 @@
+/ {
+    behaviors {
+        /omit-if-no-ref/ status_bat: status_bat {
+            compatible = "zmk,behavior-status-leds";
+            #binding-cells = <0>;
+            indicate-battery;
+        };
+
+        /omit-if-no-ref/ status_bt: status_bt {
+            compatible = "zmk,behavior-status-leds";
+            #binding-cells = <0>;
+            indicate-bt;
+        };
+    };
+};
