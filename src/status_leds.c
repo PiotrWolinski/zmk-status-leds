@@ -174,19 +174,7 @@ static void status_tick_handler(struct k_work *work) {
         }
 
         memset(pixels, 0, sizeof(pixels));
-        /* Color-code milestones to make counting on camera easier:
-         * - Every 10th LED (0, 10, 20...): Blue
-         * - Every 5th LED (5, 15...):      Green
-         * - All other LEDs:                Red
-         */
-        struct led_rgb marker_color = COLOR_RED;
-        if (discover_idx % 10 == 0) {
-            marker_color = COLOR_BLUE;
-        } else if (discover_idx % 5 == 0) {
-            marker_color = COLOR_GREEN;
-        }
-
-        pixels[discover_idx] = marker_color;
+        pixels[discover_idx] = (discover_idx % 2 == 0) ? COLOR_GREEN : COLOR_BLUE;
         flush_strip();
 
         discover_idx++;
@@ -224,7 +212,7 @@ static void status_tick_handler(struct k_work *work) {
         uint32_t interval_ms;
 
         if (is_connected) {
-            /* Currently connected: flash green */
+            /* Currently connected: solid green */
             active_color = COLOR_GREEN;
             interval_ms = CONFIG_ZMK_STATUS_LEDS_FAST_BLINK_MS;
         } else if (is_open) {
@@ -238,7 +226,8 @@ static void status_tick_handler(struct k_work *work) {
         }
 
         if (active_idx < bt_led_count) {
-            set_pixel_safe(bt_leds[active_idx], blink_phase_on ? active_color : COLOR_OFF);
+            bool show_color = is_connected || blink_phase_on;
+            set_pixel_safe(bt_leds[active_idx], show_color ? active_color : COLOR_OFF);
         }
 
         blink_phase_on = !blink_phase_on;
@@ -278,6 +267,13 @@ void zmk_status_leds_show_bt(void) {
 
 void zmk_status_leds_discover(void) {
     k_work_cancel_delayable(&status_tick_work);
+
+    if (current_mode == STATUS_MODE_DISCOVER) {
+        current_mode = STATUS_MODE_IDLE;
+        release_strip();
+        return;
+    }
+
     acquire_strip();
     current_mode = STATUS_MODE_DISCOVER;
     discover_idx = 0;
