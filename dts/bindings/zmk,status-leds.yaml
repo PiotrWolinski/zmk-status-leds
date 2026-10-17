@@ -9,9 +9,9 @@ properties:
     description: Reference to the physical LED strip device (e.g., &led_strip)
   battery-leds:
     type: array
-    required: true
+    required: false
     description: Array of physical LED indices used to display battery thresholds
   bt-leds:
     type: array
-    required: true
+    required: false
     description: Array of physical LED indices corresponding to Bluetooth profile slots

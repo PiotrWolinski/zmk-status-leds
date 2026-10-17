@@ -23,24 +23,28 @@ config ZMK_STATUS_LEDS_BRIGHTNESS
 config ZMK_STATUS_LEDS_DURATION_MS
     int "Duration (ms) to display status before turning LEDs off"
     default 3000
+    range 100 60000
     help
       How long the battery or Bluetooth indicator remains active before clearing the strip.
 
 config ZMK_STATUS_LEDS_FAST_BLINK_MS
     int "Fast blink interval (ms) for pairing / connected flash"
     default 150
+    range 10 10000
     help
       Toggle interval in milliseconds for fast flashing (e.g. unoccupied slot pairing).
 
 config ZMK_STATUS_LEDS_SLOW_BLINK_MS
     int "Slow blink interval (ms) when waiting for connection"
     default 500
+    range 10 10000
     help
       Toggle interval in milliseconds for slow blinking (occupied slot waiting to connect).
 
 config ZMK_STATUS_LEDS_DISCOVER_STEP_MS
     int "Step duration (ms) per LED during discovery mode"
     default 1000
+    range 10 10000
     help
       How long each individual LED stays lit when running &led_discover.
 

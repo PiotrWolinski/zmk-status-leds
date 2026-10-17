@@ -51,14 +51,14 @@ static const struct device *const led_strip = DEVICE_DT_GET(STRIP_NODE);
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER)
-static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
+static const struct device *const ext_power = DEVICE_DT_GET_OR_NULL(DT_INST(0, zmk_ext_power_generic));
 #endif
 
-static const int32_t battery_leds[] = DT_INST_PROP(0, battery_leds);
-static const size_t battery_led_count = DT_INST_PROP_LEN(0, battery_leds);
+static const int32_t battery_leds[] = DT_INST_PROP_OR(0, battery_leds, {});
+static const size_t battery_led_count = DT_INST_PROP_LEN_OR(0, battery_leds, 0);
 
-static const int32_t bt_leds[] = DT_INST_PROP(0, bt_leds);
-static const size_t bt_led_count = DT_INST_PROP_LEN(0, bt_leds);
+static const int32_t bt_leds[] = DT_INST_PROP_OR(0, bt_leds, {});
+static const size_t bt_led_count = DT_INST_PROP_LEN_OR(0, bt_leds, 0);
 
 #define BRT CONFIG_ZMK_STATUS_LEDS_BRIGHTNESS
 #define DIM_BRT MAX(1, (CONFIG_ZMK_STATUS_LEDS_BRIGHTNESS / 4))
@@ -232,16 +232,22 @@ static void status_tick_handler(struct k_work *work) {
 
         blink_phase_on = !blink_phase_on;
         flush_strip();
-        k_work_reschedule(&status_tick_work, K_MSEC(interval_ms));
+        int64_t next_ms = MIN((int64_t)interval_ms, MAX(1, display_end_time_ms - now));
+        k_work_reschedule(&status_tick_work, K_MSEC(next_ms));
 #else
         flush_strip();
-        k_work_reschedule(&status_tick_work, K_MSEC(CONFIG_ZMK_STATUS_LEDS_DURATION_MS));
+        int64_t remaining_ms = MAX(1, display_end_time_ms - now);
+        k_work_reschedule(&status_tick_work, K_MSEC(remaining_ms));
 #endif
     }
 }
 
 void zmk_status_leds_show_battery(void) {
 #if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)
+    if (battery_led_count == 0) {
+        return;
+    }
+
     k_work_cancel_delayable(&status_tick_work);
     acquire_strip();
     current_mode = STATUS_MODE_BATTERY;
@@ -255,6 +261,10 @@ void zmk_status_leds_show_battery(void) {
 }
 
 void zmk_status_leds_show_bt(void) {
+    if (bt_led_count == 0) {
+        return;
+    }
+
     k_work_cancel_delayable(&status_tick_work);
     acquire_strip();
     current_mode = STATUS_MODE_BT;
