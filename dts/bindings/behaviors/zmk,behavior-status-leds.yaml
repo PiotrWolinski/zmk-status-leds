@@ -11,3 +11,6 @@ properties:
   indicate-bt:
     type: boolean
     description: Trigger the Bluetooth connection status display when pressed
+  indicate-discover:
+    type: boolean
+    description: Sequentially light up each LED one by one to discover physical LED ordering

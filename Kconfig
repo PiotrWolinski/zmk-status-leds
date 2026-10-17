@@ -11,7 +11,7 @@ config ZMK_BEHAVIOR_STATUS_LEDS
     bool "Status LEDs keymap behavior"
     default y
     help
-      Enable the keymap behavior (&status_bat and &status_bt) to trigger status LEDs on key press.
+      Enable the keymap behavior (&status_bat, &status_bt, &status_discover) to trigger status LEDs on key press.
 
 config ZMK_STATUS_LEDS_BRIGHTNESS
     int "LED brightness (1-255)"
@@ -37,5 +37,11 @@ config ZMK_STATUS_LEDS_SLOW_BLINK_MS
     default 500
     help
       Toggle interval in milliseconds for slow blinking (occupied slot waiting to connect).
+
+config ZMK_STATUS_LEDS_DISCOVER_STEP_MS
+    int "Step duration (ms) per LED during discovery mode"
+    default 1000
+    help
+      How long each individual LED stays lit when running &status_discover.
 
 endif # ZMK_STATUS_LEDS

@@ -11,5 +11,11 @@
             #binding-cells = <0>;
             indicate-bt;
         };
+
+        /omit-if-no-ref/ status_discover: status_discover {
+            compatible = "zmk,behavior-status-leds";
+            #binding-cells = <0>;
+            indicate-discover;
+        };
     };
 };

@@ -63,21 +63,24 @@ static const size_t bt_led_count = DT_INST_PROP_LEN(0, bt_leds);
 #define BRT CONFIG_ZMK_STATUS_LEDS_BRIGHTNESS
 #define DIM_BRT MAX(1, (CONFIG_ZMK_STATUS_LEDS_BRIGHTNESS / 4))
 
-static const struct led_rgb COLOR_OFF     = { .r = 0,       .g = 0,       .b = 0 };
-static const struct led_rgb COLOR_GREEN   = { .r = 0,       .g = BRT,     .b = 0 };
-static const struct led_rgb COLOR_RED     = { .r = BRT,     .g = 0,       .b = 0 };
-static const struct led_rgb COLOR_BLUE    = { .r = 0,       .g = 0,       .b = BRT };
-static const struct led_rgb COLOR_YELLOW  = { .r = BRT,     .g = BRT,     .b = 0 };
-static const struct led_rgb COLOR_SLOT_BG = { .r = DIM_BRT, .g = DIM_BRT, .b = DIM_BRT };
+static const struct led_rgb COLOR_OFF     = { .r = 0,       .g = 0,              .b = 0 };
+static const struct led_rgb COLOR_GREEN   = { .r = 0,       .g = BRT,            .b = 0 };
+static const struct led_rgb COLOR_ORANGE  = { .r = BRT,     .g = MAX(1, BRT / 3),.b = 0 };
+static const struct led_rgb COLOR_RED     = { .r = BRT,     .g = 0,              .b = 0 };
+static const struct led_rgb COLOR_BLUE    = { .r = 0,       .g = 0,              .b = BRT };
+static const struct led_rgb COLOR_YELLOW  = { .r = BRT,     .g = BRT,            .b = 0 };
+static const struct led_rgb COLOR_SLOT_BG = { .r = DIM_BRT, .g = DIM_BRT,        .b = DIM_BRT };
 
 enum status_mode {
     STATUS_MODE_IDLE = 0,
     STATUS_MODE_BATTERY,
     STATUS_MODE_BT,
+    STATUS_MODE_DISCOVER,
 };
 
 static enum status_mode current_mode = STATUS_MODE_IDLE;
 static bool blink_phase_on = false;
+static size_t discover_idx = 0;
 static int64_t display_end_time_ms = 0;
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW)
@@ -144,15 +147,17 @@ static void render_battery_frame(void) {
 #if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)
     uint8_t soc = zmk_battery_state_of_charge();
 
-    /* Calculate number of green LEDs proportionally (rounded to nearest slot) */
-    size_t green_count = (soc * battery_led_count + 50) / 100;
-    if (green_count > battery_led_count) {
-        green_count = battery_led_count;
+    /* Calculate number of filled LEDs proportionally (rounded to nearest slot) */
+    size_t filled_count = (soc * battery_led_count + 50) / 100;
+    if (filled_count > battery_led_count) {
+        filled_count = battery_led_count;
     }
+
+    struct led_rgb filled_color = (soc < 50) ? COLOR_ORANGE : COLOR_GREEN;
 
     memset(pixels, 0, sizeof(pixels));
     for (size_t i = 0; i < battery_led_count; i++) {
-        set_pixel_safe(battery_leds[i], (i < green_count) ? COLOR_GREEN : COLOR_RED);
+        set_pixel_safe(battery_leds[i], (i < filled_count) ? filled_color : COLOR_RED);
     }
     flush_strip();
 #endif
@@ -160,6 +165,34 @@ static void render_battery_frame(void) {
 
 static void status_tick_handler(struct k_work *work) {
     int64_t now = k_uptime_get();
+
+    if (current_mode == STATUS_MODE_DISCOVER) {
+        if (discover_idx >= STRIP_NUM_PIXELS) {
+            current_mode = STATUS_MODE_IDLE;
+            release_strip();
+            return;
+        }
+
+        memset(pixels, 0, sizeof(pixels));
+        /* Color-code milestones to make counting on camera easier:
+         * - Every 10th LED (0, 10, 20...): Blue
+         * - Every 5th LED (5, 15...):      Green
+         * - All other LEDs:                Red
+         */
+        struct led_rgb marker_color = COLOR_RED;
+        if (discover_idx % 10 == 0) {
+            marker_color = COLOR_BLUE;
+        } else if (discover_idx % 5 == 0) {
+            marker_color = COLOR_GREEN;
+        }
+
+        pixels[discover_idx] = marker_color;
+        flush_strip();
+
+        discover_idx++;
+        k_work_reschedule(&status_tick_work, K_MSEC(CONFIG_ZMK_STATUS_LEDS_DISCOVER_STEP_MS));
+        return;
+    }
 
     if (now >= display_end_time_ms || current_mode == STATUS_MODE_IDLE) {
         current_mode = STATUS_MODE_IDLE;
@@ -243,6 +276,16 @@ void zmk_status_leds_show_bt(void) {
     k_work_reschedule(&status_tick_work, K_MSEC(20));
 }
 
+void zmk_status_leds_discover(void) {
+    k_work_cancel_delayable(&status_tick_work);
+    acquire_strip();
+    current_mode = STATUS_MODE_DISCOVER;
+    discover_idx = 0;
+
+    /* Delay 20ms so any pending underglow_off_work finishes before we draw */
+    k_work_reschedule(&status_tick_work, K_MSEC(20));
+}
+
 #if IS_ENABLED(CONFIG_ZMK_BLE) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
 static int status_leds_ble_listener_cb(const zmk_event_t *eh) {
     ARG_UNUSED(eh);
@@ -265,4 +308,5 @@ SYS_INIT(status_leds_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 #warning "CONFIG_ZMK_STATUS_LEDS is enabled, but no 'zmk,status-leds' node was found in the Devicetree."
 void zmk_status_leds_show_battery(void) {}
 void zmk_status_leds_show_bt(void) {}
+void zmk_status_leds_discover(void) {}
 #endif /* DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT) */

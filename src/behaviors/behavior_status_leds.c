@@ -16,6 +16,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 struct behavior_status_leds_config {
     bool indicate_battery;
     bool indicate_bt;
+    bool indicate_discover;
 };
 
 static int behavior_status_leds_init(const struct device *dev) {
@@ -33,6 +34,10 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
 
     if (cfg->indicate_bt) {
         zmk_status_leds_show_bt();
+    }
+
+    if (cfg->indicate_discover) {
+        zmk_status_leds_discover();
     }
 
     return ZMK_BEHAVIOR_OPAQUE;
@@ -56,6 +61,7 @@ static const struct behavior_driver_api behavior_status_leds_driver_api = {
     static const struct behavior_status_leds_config behavior_status_leds_config_##n = {            \
         .indicate_battery = DT_INST_PROP(n, indicate_battery),                                     \
         .indicate_bt = DT_INST_PROP(n, indicate_bt),                                               \
+        .indicate_discover = DT_INST_PROP(n, indicate_discover),                                   \
     };                                                                                             \
     BEHAVIOR_DT_INST_DEFINE(n, behavior_status_leds_init, NULL, NULL,                              \
                             &behavior_status_leds_config_##n, POST_KERNEL,                         \
